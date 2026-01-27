@@ -1,5 +1,7 @@
-package api;
+package api.tests;
 
+import api.models.Order;
+import api.steps.TestBase;
 import io.qameta.allure.Step;
 import io.qameta.allure.junit4.DisplayName;
 import io.restassured.response.Response;
@@ -11,6 +13,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static io.restassured.RestAssured.given;
+import static org.apache.http.HttpStatus.SC_CREATED;
 import static org.hamcrest.Matchers.*;
 
 @RunWith(Parameterized.class)
@@ -36,25 +39,25 @@ public class OrderTest extends TestBase {
 
     @Test
     @DisplayName("Создание заказа с различными параметрами цвета")
-    public void createOrderWithDifferentColorOptions() {
+    public void createOrderWithDifferentColorOptionsTest() {
         Order order = createTestOrder();
         order.setColor(colors);
 
         createOrderStep(order)
                 .then()
-                .statusCode(201)
+                .statusCode(SC_CREATED)
                 .body("track", notNullValue());
     }
 
     @Test
     @DisplayName("Создание заказа с корректными данными")
-    public void createOrderWithValidData() {
+    public void createOrderWithValidDataTest() {
         Order order = createTestOrder();
         order.setColor(Arrays.asList("BLACK"));
 
         createOrderStep(order)
                 .then()
-                .statusCode(201)
+                .statusCode(SC_CREATED)
                 .body("track", notNullValue())
                 .body("track", greaterThan(0));
     }

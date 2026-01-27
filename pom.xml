@@ -16,10 +16,31 @@
         <!-- версия Allure -->
         <allure.version>2.21.0</allure.version>
         <!-- версия Aspectj -->
-        <aspectj.version>1.9.19</aspectj.version>
+        <aspectj.version>1.9.20</aspectj.version> <!-- Рекомендую обновить до 1.9.20 -->
     </properties>
 
     <dependencies>
+
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
+            <version>${aspectj.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpcore</artifactId>
+            <version>4.4.16</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.24</version>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- JUnit 4 -->
         <dependency>
             <groupId>junit</groupId>
@@ -84,13 +105,7 @@
                         </property>
                     </systemProperties>
                 </configuration>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.aspectj</groupId>
-                        <artifactId>aspectjweaver</artifactId>
-                        <version>${aspectj.version}</version>
-                    </dependency>
-                </dependencies>
+
             </plugin>
 
             <!-- подключение плагина allure-maven для вызова функций Allure с помощью Maven -->

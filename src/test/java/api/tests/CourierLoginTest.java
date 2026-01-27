@@ -1,5 +1,7 @@
-package api;
+package api.tests;
 
+import api.models.Courier;
+import api.steps.TestBase;
 import io.qameta.allure.Step;
 import io.qameta.allure.junit4.DisplayName;
 import io.restassured.response.Response;
@@ -8,12 +10,12 @@ import org.junit.Before;
 import org.junit.Test;
 
 import static io.restassured.RestAssured.given;
+import static org.apache.http.HttpStatus.*;
 import static org.hamcrest.Matchers.*;
 
 @DisplayName("Тесты API авторизации курьера")
 public class CourierLoginTest extends TestBase {
 
-    private Courier testCourier;
     private String testLogin;
     private String testPassword;
 
@@ -25,80 +27,78 @@ public class CourierLoginTest extends TestBase {
         testPassword = "auth_password_" + timestamp;
         String firstName = "Авторизация_" + timestamp;
 
-        testCourier = new Courier(testLogin, testPassword, firstName);
+        Courier testCourier = new Courier(testLogin, testPassword, firstName);
 
         // Регистрируем курьера
         createCourierStep(testCourier)
                 .then()
-                .statusCode(201);
+                .statusCode(SC_CREATED);
     }
 
     @Test
     @DisplayName("Курьер может успешно авторизоваться")
-    public void courierCanLoginSuccessfully() {
+    public void courierCanLoginSuccessfullyTest() {
         loginCourierStep(testLogin, testPassword)
                 .then()
-                .statusCode(200)
+                .statusCode(SC_OK)
                 .body("id", notNullValue())
                 .log().all();
-
     }
 
     @Test
     @DisplayName("Авторизация с неправильным паролем возвращает ошибку")
-    public void loginWithWrongPasswordShouldFail() {
+    public void loginWithWrongPasswordShouldFailTest() {
         loginCourierStep(testLogin, "wrong_password")
                 .then()
-                .statusCode(404)
+                .statusCode(SC_NOT_FOUND)
                 .body("message", equalTo("Учетная запись не найдена"))
                 .log().all();
     }
 
     @Test
     @DisplayName("Авторизация с неправильным логином возвращает ошибку")
-    public void loginWithWrongLoginShouldFail() {
+    public void loginWithWrongLoginShouldFailTest() {
         loginCourierStep("wrong_login", testPassword)
                 .then()
-                .statusCode(404)
+                .statusCode(SC_NOT_FOUND)
                 .body("message", equalTo("Учетная запись не найдена"))
                 .log().all();
     }
 
     @Test
     @DisplayName("Авторизация без логина возвращает ошибку")
-    public void loginWithoutLoginShouldFail() {
+    public void loginWithoutLoginShouldFailTest() {
         given()
                 .header("Content-type", "application/json")
                 .body("{\"password\": \"" + testPassword + "\"}")
                 .when()
                 .post("/api/v1/courier/login")
                 .then()
-                .statusCode(400)
+                .statusCode(SC_BAD_REQUEST)
                 .body("message", equalTo("Недостаточно данных для входа"))
                 .log().all();
     }
 
-
     @Test
     @DisplayName("Авторизация без пароля возвращает ошибку")
-    public void loginWithoutPasswordShouldFail() {
+    public void loginWithoutPasswordShouldFailTest() {
         given()
                 .header("Content-type", "application/json")
                 .body("{\"login\": \"" + testLogin + "\"}")
                 .when()
                 .post("/api/v1/courier/login")
                 .then()
-                .statusCode(400)
+                .statusCode(SC_BAD_REQUEST)
                 .body("message", equalTo("Недостаточно данных для входа"))
                 .log().all();
     }
 
     @Test
     @DisplayName("Авторизация несуществующего пользователя возвращает ошибку")
-    public void loginNonExistentUserShouldFail() {
+    public void loginNonExistentUserShouldFailTest() {
         loginCourierStep("non_existent_user", "any_password")
                 .then()
-                .statusCode(404)
+                .statusCode(SC_NOT_FOUND)
                 .body("message", equalTo("Учетная запись не найдена"))
                 .log().all();
     }

@@ -1,4 +1,4 @@
-package api;
+package api.models;
 
 import java.util.List;
 
@@ -29,7 +29,6 @@ public class Order {
         this.color = color;
     }
 
-    // Геттеры и сеттеры остаются без изменений
     public String getFirstName() { return firstName; }
     public void setFirstName(String firstName) { this.firstName = firstName; }
 

@@ -1,8 +1,11 @@
-package api;
+package api.steps;
 
+import api.models.Courier;
 import io.qameta.allure.Step;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
+import lombok.Data;
+
 import org.junit.Before;
 
 import static io.restassured.RestAssured.given;
@@ -28,10 +31,11 @@ public class TestBase {
     @Step("Удаление тестового курьера")
     protected void deleteTestCourier(String login, String password) {
         try {
+            CourierCredentials credentials = new CourierCredentials(login, password);
             // Сначала получаем ID курьера для удаления
             Response loginResponse = given()
                     .header("Content-type", "application/json")
-                    .body(new CourierCredentials(login, password))
+                    .body(credentials)
                     .when()
                     .post("/api/v1/courier/login");
 
@@ -52,9 +56,11 @@ public class TestBase {
 
     @Step("Авторизация курьера")
     protected String loginCourier(String login, String password) {
+        CourierCredentials credentials = new CourierCredentials(login, password);
+
         Response response = given()
                 .header("Content-type", "application/json")
-                .body(new CourierCredentials(login, password))
+                .body(credentials)
                 .when()
                 .post("/api/v1/courier/login");
 
@@ -62,16 +68,16 @@ public class TestBase {
     }
 
     // Внутренний класс для авторизации
-    private static class CourierCredentials {
+    @Data
+    public static class CourierCredentials {
         private String login;
         private String password;
+
+        public CourierCredentials(){}
 
         public CourierCredentials(String login, String password) {
             this.login = login;
             this.password = password;
         }
-
-        public String getLogin() { return login; }
-        public String getPassword() { return password; }
     }
 }
