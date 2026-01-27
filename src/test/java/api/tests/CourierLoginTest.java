@@ -38,7 +38,10 @@ public class CourierLoginTest extends TestBase {
     @Test
     @DisplayName("Курьер может успешно авторизоваться")
     public void courierCanLoginSuccessfullyTest() {
-        loginCourierStep(testLogin, testPassword)
+        // Создаем объект для авторизации
+        CourierCredentials credentials = new CourierCredentials(testLogin, testPassword);
+
+        loginCourierStep(credentials)
                 .then()
                 .statusCode(SC_OK)
                 .body("id", notNullValue())
@@ -48,7 +51,10 @@ public class CourierLoginTest extends TestBase {
     @Test
     @DisplayName("Авторизация с неправильным паролем возвращает ошибку")
     public void loginWithWrongPasswordShouldFailTest() {
-        loginCourierStep(testLogin, "wrong_password")
+        // Создаем объект с неправильным паролем
+        CourierCredentials credentials = new CourierCredentials(testLogin, "wrong_password");
+
+        loginCourierStep(credentials)
                 .then()
                 .statusCode(SC_NOT_FOUND)
                 .body("message", equalTo("Учетная запись не найдена"))
@@ -58,7 +64,10 @@ public class CourierLoginTest extends TestBase {
     @Test
     @DisplayName("Авторизация с неправильным логином возвращает ошибку")
     public void loginWithWrongLoginShouldFailTest() {
-        loginCourierStep("wrong_login", testPassword)
+        // Создаем объект с неправильным логином
+        CourierCredentials credentials = new CourierCredentials("wrong_login", testPassword);
+
+        loginCourierStep(credentials)
                 .then()
                 .statusCode(SC_NOT_FOUND)
                 .body("message", equalTo("Учетная запись не найдена"))
@@ -68,11 +77,11 @@ public class CourierLoginTest extends TestBase {
     @Test
     @DisplayName("Авторизация без логина возвращает ошибку")
     public void loginWithoutLoginShouldFailTest() {
-        given()
-                .header("Content-type", "application/json")
-                .body("{\"password\": \"" + testPassword + "\"}")
-                .when()
-                .post("/api/v1/courier/login")
+        // Создаем объект без логина
+        CourierCredentials credentials = new CourierCredentials();
+        credentials.setPassword(testPassword);
+
+        loginCourierStep(credentials)
                 .then()
                 .statusCode(SC_BAD_REQUEST)
                 .body("message", equalTo("Недостаточно данных для входа"))
@@ -82,11 +91,11 @@ public class CourierLoginTest extends TestBase {
     @Test
     @DisplayName("Авторизация без пароля возвращает ошибку")
     public void loginWithoutPasswordShouldFailTest() {
-        given()
-                .header("Content-type", "application/json")
-                .body("{\"login\": \"" + testLogin + "\"}")
-                .when()
-                .post("/api/v1/courier/login")
+        // Создаем объект без пароля
+        CourierCredentials credentials = new CourierCredentials();
+        credentials.setLogin(testLogin);
+
+        loginCourierStep(credentials)
                 .then()
                 .statusCode(SC_BAD_REQUEST)
                 .body("message", equalTo("Недостаточно данных для входа"))
@@ -96,7 +105,10 @@ public class CourierLoginTest extends TestBase {
     @Test
     @DisplayName("Авторизация несуществующего пользователя возвращает ошибку")
     public void loginNonExistentUserShouldFailTest() {
-        loginCourierStep("non_existent_user", "any_password")
+        // Создаем объект для несуществующего пользователя
+        CourierCredentials credentials = new CourierCredentials("non_existent_user", "any_password");
+
+        loginCourierStep(credentials)
                 .then()
                 .statusCode(SC_NOT_FOUND)
                 .body("message", equalTo("Учетная запись не найдена"))
@@ -104,10 +116,10 @@ public class CourierLoginTest extends TestBase {
     }
 
     @Step("Отправка запроса на авторизацию курьера")
-    private Response loginCourierStep(String login, String password) {
+    private Response loginCourierStep(CourierCredentials credentials) {
         return given()
                 .header("Content-type", "application/json")
-                .body("{\"login\": \"" + login + "\", \"password\": \"" + password + "\"}")
+                .body(credentials) // Сериализуем объект в JSON
                 .when()
                 .post("/api/v1/courier/login")
                 .then()
