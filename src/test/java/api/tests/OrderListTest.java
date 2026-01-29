@@ -1,14 +1,12 @@
 package api.tests;
 
 import api.steps.TestBase;
-import io.qameta.allure.Step;
 import io.qameta.allure.junit4.DisplayName;
 import io.restassured.response.Response;
 import org.junit.Test;
 
 import java.util.List;
 
-import static io.restassured.RestAssured.given;
 import static org.apache.http.HttpStatus.SC_OK;
 import static org.hamcrest.Matchers.*;
 
@@ -18,8 +16,9 @@ public class OrderListTest extends TestBase {
     @Test
     @DisplayName("Получение списка заказов возвращает непустой массив")
     public void getOrdersListReturnsNonEmptyArrayTest() {
-        getOrdersListStep()
-                .then()
+        Response response = orderApiClient.getOrdersList();
+
+        response.then()
                 .statusCode(SC_OK)
                 .body("orders", notNullValue())
                 .body("orders", instanceOf(List.class))
@@ -29,8 +28,9 @@ public class OrderListTest extends TestBase {
     @Test
     @DisplayName("Список заказов содержит обязательные поля")
     public void ordersListContainsRequiredFieldsTest() {
-        getOrdersListStep()
-                .then()
+        Response response = orderApiClient.getOrdersList();
+
+        response.then()
                 .statusCode(SC_OK)
                 .body("orders[0]", notNullValue())  // Проверяем, что есть хотя бы один заказ
                 .body("orders[0].id", notNullValue())
@@ -42,39 +42,23 @@ public class OrderListTest extends TestBase {
     @Test
     @DisplayName("Можно ограничить количество возвращаемых заказов")
     public void canLimitNumberOfReturnedOrdersTest() {
-        given()
-                .header("Content-type", "application/json")
-                .queryParam("limit", 5)
-                .when()
-                .get("/api/v1/orders")
-                .then()
+        int limit = 5;
+        Response response = orderApiClient.getOrdersListWithLimit(limit);
+
+        response.then()
                 .statusCode(SC_OK)
-                .body("orders.size()", lessThanOrEqualTo(5));
+                .body("orders.size()", lessThanOrEqualTo(limit));
     }
 
     @Test
     @DisplayName("Можно указать страницу для пагинации")
     public void canSpecifyPageForPaginationTest() {
-        given()
-                .header("Content-type", "application/json")
-                .queryParam("page", 1)
-                .queryParam("limit", 10)
-                .when()
-                .get("/api/v1/orders")
-                .then()
+        int page = 1;
+        int limit = 10;
+        Response response = orderApiClient.getOrdersListWithParams(limit, page);
+
+        response.then()
                 .statusCode(SC_OK)
                 .body("orders", notNullValue());
-    }
-
-    @Step("Получение списка заказов")
-    private Response getOrdersListStep() {
-        return given()
-                .header("Content-type", "application/json")
-                .when()
-                .get("/api/v1/orders")
-                .then()
-                .log().ifError()
-                .extract()
-                .response();
     }
 }

@@ -12,7 +12,6 @@ import org.junit.runners.Parameterized;
 import java.util.Arrays;
 import java.util.List;
 
-import static io.restassured.RestAssured.given;
 import static org.apache.http.HttpStatus.SC_CREATED;
 import static org.hamcrest.Matchers.*;
 
@@ -43,10 +42,17 @@ public class OrderTest extends TestBase {
         Order order = createTestOrder();
         order.setColor(colors);
 
-        createOrderStep(order)
-                .then()
+        Response response = orderApiClient.createOrder(order);
+
+        int track = response.then()
                 .statusCode(SC_CREATED)
-                .body("track", notNullValue());
+                .body("track", notNullValue())
+                .body("track", greaterThan(0))
+                .extract()
+                .path("track");
+
+        // Сохраняем трек-номер для очистки в @After
+        saveCreatedOrderTrack(track);
     }
 
     @Test
@@ -55,11 +61,17 @@ public class OrderTest extends TestBase {
         Order order = createTestOrder();
         order.setColor(Arrays.asList("BLACK"));
 
-        createOrderStep(order)
-                .then()
+        Response response = orderApiClient.createOrder(order);
+
+        int track = response.then()
                 .statusCode(SC_CREATED)
                 .body("track", notNullValue())
-                .body("track", greaterThan(0));
+                .body("track", greaterThan(0))
+                .extract()
+                .path("track");
+
+        // Сохраняем трек-номер для очистки в @After
+        saveCreatedOrderTrack(track);
     }
 
     @Step("Создание тестового заказа")
@@ -76,18 +88,5 @@ public class OrderTest extends TestBase {
                 "Тестовый заказ " + timestamp,
                 null
         );
-    }
-
-    @Step("Отправка запроса на создание заказа")
-    private Response createOrderStep(Order order) {
-        return given()
-                .header("Content-type", "application/json")
-                .body(order)
-                .when()
-                .post("/api/v1/orders")
-                .then()
-                .log().ifError()
-                .extract()
-                .response();
     }
 }

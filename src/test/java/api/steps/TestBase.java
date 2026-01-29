@@ -1,21 +1,40 @@
 package api.steps;
 
+import api.client.CourierApiClient;
+import api.client.OrderApiClient;
 import api.models.Courier;
 import io.qameta.allure.Step;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
 import lombok.Data;
-
+import org.junit.After;
 import org.junit.Before;
 
-import static io.restassured.RestAssured.given;
+import static org.apache.http.HttpStatus.SC_OK;
 
 public class TestBase {
 
+    protected CourierApiClient courierApiClient;
+    protected OrderApiClient orderApiClient;
+    private Integer createdOrderTrack;
+
     @Before
+    @Step("Настройка базовых параметров API")
     public void setUp() {
         RestAssured.baseURI = "http://qa-scooter.praktikum-services.ru";
         RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
+        courierApiClient = new CourierApiClient();
+        orderApiClient = new OrderApiClient();
+        createdOrderTrack = null;
+    }
+
+    @After
+    @Step("Очистка тестовых данных")
+    public void tearDown() {
+        // Отмена созданного заказа, если он есть
+        if (createdOrderTrack != null) {
+            cancelTestOrder(createdOrderTrack);
+        }
     }
 
     @Step("Создание тестового курьера")
@@ -28,42 +47,43 @@ public class TestBase {
         );
     }
 
-    @Step("Удаление тестового курьера")
+    @Step("Удаление тестового курьера: login={login}")
     protected void deleteTestCourier(String login, String password) {
         try {
             CourierCredentials credentials = new CourierCredentials(login, password);
-            // Сначала получаем ID курьера для удаления
-            Response loginResponse = given()
-                    .header("Content-type", "application/json")
-                    .body(credentials)
-                    .when()
-                    .post("/api/v1/courier/login");
+            Response loginResponse = courierApiClient.loginCourier(credentials);
 
-            if (loginResponse.statusCode() == 200) {
+            if (loginResponse.statusCode() == SC_OK) {
                 String courierId = loginResponse.jsonPath().getString("id");
-
-                // Удаляем курьера
-                given()
-                        .when()
-                        .delete("/api/v1/courier/" + courierId)
+                courierApiClient.deleteCourier(courierId)
                         .then()
-                        .statusCode(200);
+                        .statusCode(SC_OK);
             }
         } catch (Exception e) {
             // Игнорируем ошибки при удалении
         }
     }
 
-    @Step("Авторизация курьера")
+    @Step("Отмена тестового заказа: track={track}")
+    protected void cancelTestOrder(Integer track) {
+        try {
+            if (track != null && track > 0) {
+                orderApiClient.cancelOrder(track);
+            }
+        } catch (Exception e) {
+            // Игнорируем ошибки при отмене заказа
+        }
+    }
+
+    @Step("Сохранение трек-номера созданного заказа: {track}")
+    protected void saveCreatedOrderTrack(Integer track) {
+        this.createdOrderTrack = track;
+    }
+
+    @Step("Авторизация курьера: login={login}")
     protected String loginCourier(String login, String password) {
         CourierCredentials credentials = new CourierCredentials(login, password);
-
-        Response response = given()
-                .header("Content-type", "application/json")
-                .body(credentials)
-                .when()
-                .post("/api/v1/courier/login");
-
+        Response response = courierApiClient.loginCourier(credentials);
         return response.jsonPath().getString("id");
     }
 
@@ -78,14 +98,6 @@ public class TestBase {
         public CourierCredentials(String login, String password) {
             this.login = login;
             this.password = password;
-        }
-
-        public String getLogin() {
-            return login;
-        }
-
-        public String getPassword() {
-            return password;
         }
 
         public void setPassword(String password) {

@@ -4,12 +4,10 @@ import api.models.Courier;
 import api.steps.TestBase;
 import io.qameta.allure.Step;
 import io.qameta.allure.junit4.DisplayName;
-import io.restassured.response.Response;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import static io.restassured.RestAssured.given;
 import static org.apache.http.HttpStatus.*;
 import static org.hamcrest.Matchers.*;
 
@@ -20,6 +18,7 @@ public class CourierLoginTest extends TestBase {
     private String testPassword;
 
     @Before
+    @Step("Подготовка тестовых данных - создание курьера")
     public void setUpTestCourier() {
         // Создаем курьера перед тестами авторизации
         String timestamp = String.valueOf(System.currentTimeMillis());
@@ -30,7 +29,7 @@ public class CourierLoginTest extends TestBase {
         Courier testCourier = new Courier(testLogin, testPassword, firstName);
 
         // Регистрируем курьера
-        createCourierStep(testCourier)
+        courierApiClient.createCourier(testCourier)
                 .then()
                 .statusCode(SC_CREATED);
     }
@@ -41,11 +40,7 @@ public class CourierLoginTest extends TestBase {
         // Создаем объект для авторизации
         CourierCredentials credentials = new CourierCredentials(testLogin, testPassword);
 
-        loginCourierStep(credentials)
-                .then()
-                .statusCode(SC_OK)
-                .body("id", notNullValue())
-                .log().all();
+        performLoginAndAssertSuccess(credentials);
     }
 
     @Test
@@ -54,11 +49,7 @@ public class CourierLoginTest extends TestBase {
         // Создаем объект с неправильным паролем
         CourierCredentials credentials = new CourierCredentials(testLogin, "wrong_password");
 
-        loginCourierStep(credentials)
-                .then()
-                .statusCode(SC_NOT_FOUND)
-                .body("message", equalTo("Учетная запись не найдена"))
-                .log().all();
+        performLoginAndAssertNotFound(credentials, "Учетная запись не найдена");
     }
 
     @Test
@@ -67,11 +58,7 @@ public class CourierLoginTest extends TestBase {
         // Создаем объект с неправильным логином
         CourierCredentials credentials = new CourierCredentials("wrong_login", testPassword);
 
-        loginCourierStep(credentials)
-                .then()
-                .statusCode(SC_NOT_FOUND)
-                .body("message", equalTo("Учетная запись не найдена"))
-                .log().all();
+        performLoginAndAssertNotFound(credentials, "Учетная запись не найдена");
     }
 
     @Test
@@ -81,11 +68,7 @@ public class CourierLoginTest extends TestBase {
         CourierCredentials credentials = new CourierCredentials();
         credentials.setPassword(testPassword);
 
-        loginCourierStep(credentials)
-                .then()
-                .statusCode(SC_BAD_REQUEST)
-                .body("message", equalTo("Недостаточно данных для входа"))
-                .log().all();
+        performLoginAndAssertBadRequest(credentials, "Недостаточно данных для входа");
     }
 
     @Test
@@ -95,11 +78,7 @@ public class CourierLoginTest extends TestBase {
         CourierCredentials credentials = new CourierCredentials();
         credentials.setLogin(testLogin);
 
-        loginCourierStep(credentials)
-                .then()
-                .statusCode(SC_BAD_REQUEST)
-                .body("message", equalTo("Недостаточно данных для входа"))
-                .log().all();
+        performLoginAndAssertBadRequest(credentials, "Недостаточно данных для входа");
     }
 
     @Test
@@ -108,39 +87,35 @@ public class CourierLoginTest extends TestBase {
         // Создаем объект для несуществующего пользователя
         CourierCredentials credentials = new CourierCredentials("non_existent_user", "any_password");
 
-        loginCourierStep(credentials)
+        performLoginAndAssertNotFound(credentials, "Учетная запись не найдена");
+    }
+
+    @Step("Выполнение авторизации и проверка успешного ответа")
+    private void performLoginAndAssertSuccess(CourierCredentials credentials) {
+        courierApiClient.loginCourier(credentials)
+                .then()
+                .statusCode(SC_OK)
+                .body("id", notNullValue());
+    }
+
+    @Step("Выполнение авторизации и проверка ошибки 'Не найдено'")
+    private void performLoginAndAssertNotFound(CourierCredentials credentials, String expectedMessage) {
+        courierApiClient.loginCourier(credentials)
                 .then()
                 .statusCode(SC_NOT_FOUND)
-                .body("message", equalTo("Учетная запись не найдена"))
-                .log().all();
+                .body("message", equalTo(expectedMessage));
     }
 
-    @Step("Отправка запроса на авторизацию курьера")
-    private Response loginCourierStep(CourierCredentials credentials) {
-        return given()
-                .header("Content-type", "application/json")
-                .body(credentials) // Сериализуем объект в JSON
-                .when()
-                .post("/api/v1/courier/login")
+    @Step("Выполнение авторизации и проверка ошибки 'Некорректный запрос'")
+    private void performLoginAndAssertBadRequest(CourierCredentials credentials, String expectedMessage) {
+        courierApiClient.loginCourier(credentials)
                 .then()
-                .log().ifError()
-                .extract()
-                .response();
-    }
-
-    @Step("Создание курьера")
-    private Response createCourierStep(Courier courier) {
-        return given()
-                .header("Content-type", "application/json")
-                .body(courier)
-                .when()
-                .post("/api/v1/courier")
-                .then()
-                .extract()
-                .response();
+                .statusCode(SC_BAD_REQUEST)
+                .body("message", equalTo(expectedMessage));
     }
 
     @After
+    @Step("Очистка тестовых данных")
     public void tearDown() {
         // Удаляем тестового курьера
         if (testLogin != null && testPassword != null) {
